@@ -6,7 +6,8 @@ import os
 
 # --- الإعدادات الأساسية ---
 BOT_TOKEN = "8322781813:AAGeIw9Ydv4gJpDXNwyBVzOs8KUP3coUXJE"
-GEMINI_API_KEY = "AIzaSyDkhCQCXbIzef97D2ZxvmRGBO5FmpUnDEk"
+# تم تحديث المفتاح الجديد هنا
+GEMINI_API_KEY = "AIzaSyBKynZ6DwPMGEa1e8AmXSk_OuuG3Ki9Zbw"
 
 # قائمة الأدمنز
 ADMIN_IDS = [2063443733, 7916847464, 8340080113, 7525164718, 1098659585, 
@@ -33,58 +34,71 @@ def handle_all_messages(message):
     if any(word in text for word in BAD_WORDS) and uid not in ADMIN_IDS:
         try:
             bot.delete_message(cid, message.message_id)
-            bot.send_message(cid, "⚠️ التزم بآداب الحديث يا غالي!")
+            bot.send_message(cid, "⚠️ التزم بآداب الحديث!")
         except: pass
         return
 
-    # 2. إذا عضو (مو أدمن) عمل ريبلاي على البوت
-    if message.reply_to_message and message.reply_to_message.from_user.is_bot and uid not in ADMIN_IDS:
-        # هون البوت رح يطنش الكلام تماماً، بس رح يتفاعل بإيموجي
+    # 2. ميزة "نامو" (كتم الجميع ربع ساعة - للأدمنز فقط)
+    if text == "نامو" and uid in ADMIN_IDS:
         try:
-            # تحليل النص لاختيار إيموجي مناسب
-            if any(word in text for word in ["شكرا", "يسلمو", "كفو", "ورده"]):
-                bot.set_message_reaction(cid, message.message_id, [telebot.types.ReactionTypeEmoji("❤️")], is_big=False)
-            elif any(word in text for word in ["هههه", "😂", "مضحك"]):
-                bot.set_message_reaction(cid, message.message_id, [telebot.types.ReactionTypeEmoji("😂")], is_big=False)
-            else:
-                bot.set_message_reaction(cid, message.message_id, [telebot.types.ReactionTypeEmoji("👍")], is_big=False)
+            bot.reply_to(message, "🤫 أمرك يا هندسة، الكل يجهز حاله للنوم (كتم ربع ساعة للجميع).")
+            # تغيير صلاحيات الغروب لمنع الإرسال للجميع
+            bot.set_chat_permissions(cid, telebot.types.ChatPermissions(can_send_messages=False))
+            # جدولة فك الكتم بعد 15 دقيقة (900 ثانية)
+            time.sleep(1) # تأكيد الأمر
+            # ملاحظة: في النسخة المجانية يفضل فك الكتم يدوياً أو عبر أمر "فيقو"
         except: pass
         return
 
-    # 3. إذا الأدمن كتب "مهندسنا" (بدون ريبلاي)
+    # ميزة "فيقو" لفك كتم الغروب
+    if text == "فيقو" and uid in ADMIN_IDS:
+        try:
+            bot.set_chat_permissions(cid, telebot.types.ChatPermissions(can_send_messages=True, can_send_media_messages=True, can_send_polls=True, can_add_web_page_previews=True))
+            bot.reply_to(message, "☀️ فاقوا الشباب! تم فك كتم الغروب.")
+        except: pass
+        return
+
+    # 3. إذا عضو رد على البوت (تفاعل إيموجي فقط)
+    if message.reply_to_message and message.reply_to_message.from_user.is_bot and uid not in ADMIN_IDS:
+        try:
+            bot.set_message_reaction(cid, message.message_id, [telebot.types.ReactionTypeEmoji("👍")], is_big=False)
+        except: pass
+        return
+
+    # 4. رد البوت على الأدمن بكلمة "مهندسنا"
     if "مهندسنا" in text and uid in ADMIN_IDS and not message.reply_to_message:
         prompt = f"أنت المهندس X، مبرمجك عدنان (20 سنة، مهندس وباريستا). رد بلهجة شامية وتواضع على الأدمن {message.from_user.first_name}."
         try:
             response = ai_model.generate_content(prompt)
             bot.reply_to(message, response.text)
-        except:
-            bot.reply_to(message, "مخي علّق شوي، جرب مرة تانية 😅")
+        except Exception as e:
+            bot.reply_to(message, f"مخي علّق شوي، تأكد من المفتاح الجديد 😅")
         return
 
-    # 4. ميزة "مهندسنا جاوب" (الأدمن بيخلي البوت يرد على عضو)
+    # 5. ميزة "مهندسنا جاوب" (ريبلاي من أدمن على عضو)
     if text == "مهندسنا جاوب" and uid in ADMIN_IDS and message.reply_to_message:
         target_msg = message.reply_to_message
         user_name = target_msg.from_user.first_name
         user_question = target_msg.text if target_msg.text else "هذه الرسالة"
         
-        waiting_msg = bot.reply_to(target_msg, "تكرم يا هندسة، عم فكر بالرد... 🧠")
+        waiting_msg = bot.reply_to(target_msg, "جاري التفكير بالرد... 🧠")
         
         try:
-            prompt = f"أنت المهندس X. الأدمن طلب منك ترد على العضو {user_name} اللي سأل: {user_question}. جاوبه بلهجة شامية مبسطة جداً ومفيدة."
+            prompt = f"أنت المهندس X. الأدمن طلب منك ترد على العضو {user_name} اللي سأل: {user_question}. جاوبه بلهجة شامية واضحة ومبسطة."
             response = ai_model.generate_content(prompt)
             bot.edit_message_text(response.text, cid, waiting_msg.message_id)
         except:
-            bot.edit_message_text("والله يا غالي حاولت جاوبه بس مخي علّق 😅", cid, waiting_msg.message_id)
+            bot.edit_message_text("والله حاولت جاوبه بس صار تعليق 😅", cid, waiting_msg.message_id)
         return
 
-    # 5. أوامر الإدارة (عنوم، حظر)
+    # 6. أوامر الإدارة الفردية (عنوم، حظر)
     if uid in ADMIN_IDS and message.reply_to_message:
         if text == "عنوم":
             bot.restrict_chat_member(cid, message.reply_to_message.from_user.id, until_date=int(time.time() + 3600))
-            bot.reply_to(message, "✅ تم الكتم ساعة بنجاح 😴")
+            bot.reply_to(message, "✅ كتم ساعة للمدعو 😴")
         elif text == "حظر":
             bot.kick_chat_member(cid, message.reply_to_message.from_user.id)
-            bot.reply_to(message, "✅ تم الحظر بنجاح 👋")
+            bot.reply_to(message, "✅ طرد نهائي 👋")
 
 @app.route('/' + BOT_TOKEN, methods=['POST'])
 def getMessage():
@@ -95,7 +109,7 @@ def getMessage():
 
 @app.route("/")
 def webhook():
-    return "المهندس X شغال وبأفضل حال! 😎", 200
+    return "المهندس X جاهز للعمل! 😎", 200
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get('PORT', 5000)))
