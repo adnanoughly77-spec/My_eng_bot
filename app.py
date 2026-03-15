@@ -18,6 +18,7 @@ ADMIN_IDS = [2063443733, 7916847464, 8340080113, 7525164718, 1098659585,
 ADNAN_ID = 2063443733
 BAD_WORDS = ["كس", "عرص", "شرموط", "قحبة", "منيوك", "نيج", "مص", "ز*ب", "اير"]
 
+# قاموس الذاكرة المنفصلة
 user_contexts = {}
 
 bot = telebot.TeleBot(BOT_TOKEN, threaded=False)
@@ -30,18 +31,18 @@ def get_ai_response(uid, user_name, user_input, is_adnan):
     if uid not in user_contexts:
         user_contexts[uid] = []
     
-    # تعليمات الشخصية (البرمجة والولاء لعدنان)
+    # تعليمات الشخصية والولاء لعدنان
     base_prompt = (
-        "أنت المهندس X من الشام، مبرمجك هو المهندس عدنان (عمره 20 سنة، مهندس ميكانيك ومبرمج عبقري وباريستا محترف). "
-        "إذا حدا سألك مين برمجك، قلهم بفخر: 'المهندس عدنان هو اللي برمجني'. "
-        "إذا سألوك كيف برمجك، قلهم: 'برمجني بلغة البايثون (Python) وتعب فيني كتير وسهر ليالي لحتى صرت بهذا الذكاء'، ولا تفوت بتفاصيل تقنية معقدة. "
-        "احكي بلهجة شامية قحة، وتواضع مع الأدمنز. "
+        "أنت المهندس X من الشام، مبرمجك هو المهندس عدنان (20 سنة، مهندس ميكانيك ومبرمج وباريستا محترف). "
+        "إذا حدا سألك مين برمجك، قلهم: 'المهندس عدنان هو اللي برمجني'. "
+        "وإذا سألوك كيف، قلهم: 'برمجني بلغة البايثون (Python) وتعب فيني كتير وسهر ليالي لحتى صرت بهذا الذكاء'. "
+        "احكي بلهجة شامية، وتواضع مع الأدمنز، وبسط العلوم الصعبة. "
     )
     
     if is_adnan:
-        base_prompt += "المستخدم الحالي هو عدنان ملك الغروب ومبرمجي، عامله بفخامة شديدة وقله يا ملك أو يا سيدي. "
+        base_prompt += "المستخدم الحالي هو عدنان المالك ومبرمجي، عامله بفخامة شديدة وقله يا ملك أو يا سيدي. "
     else:
-        base_prompt += f"المستخدم الحالي هو الأدمن {user_name}. إذا عرف عن حاله، احفظ معلوماته وعامله على أساسها. "
+        base_prompt += f"المستخدم الحالي هو الأدمن {user_name}. إذا عرف عن حاله، احفظ معلوماته وعامله على أساسها دائماً ولا تخلط مواضيعه مع غيره. "
 
     context_history = "\n".join(user_contexts[uid][-10:])
     full_prompt = f"{base_prompt}\nتاريخ المحادثة السابقة:\n{context_history}\n\nالمستخدم يقول: {user_input}"
@@ -61,11 +62,13 @@ def handle_all_messages(message):
     text = message.text if message.text else ""
     is_adnan = (uid == ADNAN_ID)
 
+    # 1. فلتر الكلمات
     if any(word in text for word in BAD_WORDS) and uid not in ADMIN_IDS:
         try: bot.delete_message(cid, message.message_id)
         except: pass
         return
 
+    # 2. أوامر الإدارة (نامو، فيقو)
     if uid in ADMIN_IDS:
         if text == "نامو":
             bot.reply_to(message, "🤫 أمرك يا ملك، الغروب صار بوضع النوم.")
@@ -76,8 +79,9 @@ def handle_all_messages(message):
             bot.reply_to(message, "☀️ فاقوا الشباب! نورتوا.")
             return
 
+    # 3. شروط الرد بالذكاء الاصطناعي
     should_respond = False
-    if ("مهندسنا" in text or "مين برمجك" in text or "كيف تبرمجت" in text) and uid in ADMIN_IDS:
+    if ("مهندسنا" in text or "مين برمجك" in text) and uid in ADMIN_IDS:
         should_respond = True
     elif message.reply_to_message and message.reply_to_message.from_user.id == bot.get_me().id and uid in ADMIN_IDS:
         should_respond = True
@@ -105,5 +109,7 @@ def getMessage():
 def webhook():
     return "المهندس X جاهز لخدمة المعلم عدنان! 😎", 200
 
+# --- حل مشكلة البورت في Render ---
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get('PORT', 5000)))
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
